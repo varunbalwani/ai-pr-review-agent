@@ -1,0 +1,13 @@
+{
+  "task": "TASK-webhook",
+  "gate": "independent-review",
+  "kind": "review",
+  "attempt": "57b3f6db-64d1-44e6-ac15-5180ae3090be",
+  "human": "Varun Balwani",
+  "reason": "Reviewed webhook.py + test_webhook.py: HMAC verification precedes all processing, event/action filtering correct, enqueue signature matches ARQ job key.",
+  "observed_at": "2026-09-13T07:14:06.999Z",
+  "source_hash": "34e345c2eb5befcad64d31c1a2100c4742d3372e45c9f8e8d7f705ffa448a237",
+  "config_hash": "bc982f68e7c2158fb2c58a6d57c9ffa2d2227d9bec7f8a42673b15a16b2d6bd2",
+  "reviewed_proofs": "30e9b092a3e18bb28980610c739f659d63b3f9db30de0042852997e5192a4e27",
+  "hash": "465aa4943a070887239bdaf998defddc61c7eff2942c39d64f7f1a81a510b39d"
+}

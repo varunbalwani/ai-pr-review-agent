@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Secrets
+.env
+*.pem
+
+# Genesis generated projections (regenerable: `genesis index`/`genesis dashboard`)
+.genesis/index/
+.genesis/dashboard.html
+.genesis/KICKOFF.md

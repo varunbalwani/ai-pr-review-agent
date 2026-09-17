@@ -1,0 +1,13 @@
+{
+  "task": "TASK-github-app",
+  "gate": "independent-review",
+  "kind": "review",
+  "attempt": "6feacd36-2830-4fd4-96a4-ed4d21475478",
+  "human": "Varun Balwani",
+  "reason": "...",
+  "observed_at": "2026-09-13T07:25:40.160Z",
+  "source_hash": "c1220687acf66b198a033a2cf1ac3caff315f439cff1ca69827b86f131f5f660",
+  "config_hash": "87622369cc6a567ca58c8ce6e5d59254e24794c06d62e1abafa2d350622a103c",
+  "reviewed_proofs": "0bdb70620aa1b67f53f110c6ce5054bf7c6513bb4b77087ad3a64237c4e47391",
+  "hash": "e7469f6578fdc7c51b1e18cdac1d750b5f25635ae400811ab76672f473656545"
+}

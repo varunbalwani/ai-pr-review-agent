@@ -1,0 +1,30 @@
+{
+  "task": "TASK-contracts",
+  "gate": "unit",
+  "kind": "command",
+  "attempt": "6191a766-732d-4e82-92e7-c9e7b8d0f55b",
+  "command": "python -m pytest tests/test_contracts.py -q",
+  "started_at": "2026-09-12T19:03:25.281Z",
+  "observed_at": "2026-09-12T19:03:25.727Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "...                                                                      [100%]\n3 passed in 0.05s\n",
+  "stderr": "",
+  "failure": null,
+  "receipt": null,
+  "revision": {
+    "commit": null,
+    "dirty": null
+  },
+  "source_hash": "d553c21c944b3396d8e38f482e6f5328a77052ec092b3fe505ea1b6c5be4148a",
+  "before_hash": "d553c21c944b3396d8e38f482e6f5328a77052ec092b3fe505ea1b6c5be4148a",
+  "config_hash": "2a8a82509daaa6fa0320ae640a6a6434c2e7d50544d88a536366a0f98ed2b06c",
+  "environment": {
+    "node": "v22.22.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+    "variables": {}
+  },
+  "hash": "a7123a1e0a8c8036e073182f3c3e2af31ef93cbf476931708be1ec32f11c9953"
+}

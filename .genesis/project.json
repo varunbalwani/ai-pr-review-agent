@@ -1,0 +1,1208 @@
+{
+  "schema_version": 2,
+  "project": {
+    "name": "pr-review-pipeline",
+    "mode": "init",
+    "profile": "prototype",
+    "objective": "GitHub-triggered multi-agent PR review system: four specialist lens agents (security, quality, test_coverage, docs) run in parallel on each PR, findings are verified for confidence, high-confidence findings auto-post as inline comments, mid-confidence findings go through human-in-the-loop approval, low-confidence findings are discarded but logged. LLM: local Ollama (qwen3:8b) via a thin provider port. Storage: Tiger Cloud Postgres. Queue: Redis+ARQ. Orchestration: LangGraph. VCS: GitHub App.",
+    "constraints": [],
+    "non_goals": [],
+    "trust_boundary": "local repository",
+    "created_at": "2026-09-12T18:08:05.488Z",
+    "updated_at": "2026-09-13T15:08:23.619Z"
+  },
+  "policy": {
+    "ponytail": "full",
+    "autonomy": "human-in-the-loop",
+    "learned_rule_promotion": "human-required",
+    "cleanup": "propose-only",
+    "traces": {
+      "storage": "local",
+      "commit_raw": false,
+      "redact_secrets": true
+    }
+  },
+  "lifecycle": {
+    "phase": "build",
+    "status": "active",
+    "active_task": "TASK-e2e-verification",
+    "blocker": null,
+    "next_action": "Run the task pre-flight."
+  },
+  "commands": {},
+  "workflow": {
+    "type": "new-product",
+    "started_at": "2026-09-12T18:08:05.493Z",
+    "spec_check": {
+      "at": "2026-09-12T18:11:07.349Z",
+      "source_hash": "c567ac9ecfef0152b14f2c4e380af9ed39dcc3500e1805cabdd2f482bd78110b",
+      "requirements": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "FR-1",
+        "FR-10",
+        "FR-2",
+        "FR-3",
+        "FR-4",
+        "FR-5",
+        "FR-6",
+        "FR-7",
+        "FR-8",
+        "FR-9",
+        "NFR-1",
+        "NFR-2",
+        "NFR-3",
+        "NFR-4",
+        "NFR-5"
+      ]
+    },
+    "plan_check": {
+      "at": "2026-09-12T18:23:54.929Z",
+      "source_hash": "dc527909cb5961d912b846e269ef3911770d97cf3e1b11c54d98dbd1aed60d17"
+    },
+    "plan_approval": {
+      "human": "Varun",
+      "reason": "Approved 9-task Phase 1 plan; Tiger Cloud provisioning still pending, will land before TASK-storage.",
+      "at": "2026-09-12T19:01:16.437Z",
+      "source_hash": "dc527909cb5961d912b846e269ef3911770d97cf3e1b11c54d98dbd1aed60d17"
+    }
+  },
+  "artifacts": [
+    {
+      "id": "SPEC-1",
+      "type": "specification",
+      "path": "SPEC.md",
+      "status": "approved",
+      "requirements": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "FR-1",
+        "FR-10",
+        "FR-2",
+        "FR-3",
+        "FR-4",
+        "FR-5",
+        "FR-6",
+        "FR-7",
+        "FR-8",
+        "FR-9",
+        "NFR-1",
+        "NFR-2",
+        "NFR-3",
+        "NFR-4",
+        "NFR-5"
+      ],
+      "source_hash": "c567ac9ecfef0152b14f2c4e380af9ed39dcc3500e1805cabdd2f482bd78110b",
+      "approval": {
+        "human": "Varun",
+        "reason": "Reviewed spec content, scope, decisions and risks in conversation; approved as-is.",
+        "at": "2026-09-12T18:22:04.810Z",
+        "source_hash": "c567ac9ecfef0152b14f2c4e380af9ed39dcc3500e1805cabdd2f482bd78110b"
+      }
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "ASSUMPTION-8bf6c420",
+      "text": "Single 8B local model (qwen3:8b) is used for both a lens agent and the verify step; the confidence gate is therefore not an independent check. Confidence thresholds will likely need retuning and the HITL band may need to be wider than a stronger-model deployment would need.",
+      "status": "open",
+      "source": "user, session 2026-09-12",
+      "recorded_at": "2026-09-12T18:11:03.345Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "ASSUMPTION-cdc6fa50",
+      "text": "claim_finding (FR-8) inserts the posted_findings row before the caller actually posts the GitHub comment. If the post node crashes between a successful claim and the actual VCS post, the finding is permanently unclaimable on retry (row already exists) and silently never gets posted -- no error, no re-post, no log. This is a known gap in TASK-storage's schema, not fixed here; the post node (TASK-hitl or wherever FR-8's caller lives) should either confirm-after-post (e.g. a posted_at update / two-phase claim) or this assumption should be revisited before the post pipeline is wired up.",
+      "status": "open",
+      "source": "advisor review, session 2026-09-13, TASK-storage",
+      "recorded_at": "2026-09-13T08:00:35.538Z",
+      "paths": [],
+      "tags": []
+    }
+  ],
+  "invariants": [],
+  "decisions": [
+    {
+      "id": "DECISION-cf462ceb",
+      "title": "LLM provider: local Ollama, not Anthropic",
+      "text": "No Anthropic API key available; using locally-hosted Ollama (qwen3:8b) for all five AGENT_MODEL_* roles via a thin provider port mirroring VCSProvider, so a hosted provider can be swapped in later.",
+      "status": "accepted",
+      "source": "user, session 2026-09-12",
+      "recorded_at": "2026-09-12T18:11:03.210Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-00f5c9d5",
+      "title": "Phase 1 deploy target: local dev machine behind a tunnel",
+      "text": "No hosting account for Phase 1. Webhook receiver runs on the local dev machine with an ngrok/cloudflared tunnel for a public HTTPS endpoint. Revisit hosting before treating this as always-on infrastructure.",
+      "status": "accepted",
+      "source": "user, session 2026-09-12",
+      "recorded_at": "2026-09-12T18:11:03.474Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-618eab9b",
+      "title": "Test repo for Phase 1 verification",
+      "text": "github.com/varunbalwani/In-memory-Pub-sub-in-Go is the concrete repo used for the verification checklist's real test PR. The system remains general-purpose (installable on any repo), not hardcoded to this one.",
+      "status": "accepted",
+      "source": "user, session 2026-09-12",
+      "recorded_at": "2026-09-12T18:11:03.579Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-e11caadd",
+      "title": "Not a Niyo-org repo; no Jira-key commit convention applied",
+      "text": "This is a personal project under projects/personal, not Niyo engineering work. Commits will not carry a Jira key by default per org convention, since that convention targets Niyo repos.",
+      "status": "accepted",
+      "source": "user, session 2026-09-12",
+      "recorded_at": "2026-09-12T18:11:03.688Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-f885cadc",
+      "title": "resolve_comment uses GraphQL resolveReviewThread",
+      "text": "GitHub's REST API has no endpoint to resolve a PR review conversation thread; only the GraphQL mutation resolveReviewThread(input:{threadId}) does this. VCSProvider.resolve_comment therefore treats comment_id as a GraphQL thread node ID (e.g. PRRT_...), not a REST numeric comment id, and issues a POST to /graphql through the same authenticated installation-token client used for REST calls.",
+      "status": "accepted",
+      "source": "session 2026-09-13, TASK-github-app",
+      "recorded_at": "2026-09-13T07:19:37.120Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-0d2b1dcb",
+      "title": "Lens agent output contract: model returns snippet, not fingerprint",
+      "text": "Each lens prompts the model for a JSON array of {path, line, side, snippet, severity, confidence, rationale, suggested_patch}. Finding.fingerprint is computed in code as sha256(path|normalized_snippet|category), never trusted from the model, so it stays stable across line-number drift on resume (contracts.py docstring: 'not line number'). Docs lens gating (FR-3) is a path/symbol heuristic: README/docs paths, filenames containing 'cli', config extensions (yaml/toml/ini/cfg), or an added top-level def/class without a leading underscore in the patch body. FR-2's 'run in parallel' is satisfied by run_all_lenses() using asyncio.gather; LangGraph node wiring for the four lenses is a separate later task.",
+      "status": "accepted",
+      "source": "session 2026-09-13, TASK-agents",
+      "recorded_at": "2026-09-13T07:29:18.932Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-2b35d850",
+      "title": "TASK-orchestration satisfies NFR-4 partially; durability deferred to TASK-storage",
+      "text": "NFR-4 has two halves: (1) interrupt() must not block ARQ worker concurrency while a finding is paused, and (2) the checkpoint must persist so a paused job can resume later, potentially in a different worker process. This task proves (1): the graph pauses via interrupt(), returns control to the caller, and resumes from an approvals dict without re-running analyze/verify (test_graph_pauses_on_mid_confidence_and_resumes_without_reanalyzing asserts verify_calls stays at 1 across the pause/resume boundary). It does NOT prove (2): tests use langgraph's in-memory MemorySaver in a single process, which does not survive a process restart or a different worker picking up the resume. build_graph(llm, checkpointer) accepts any BaseCheckpointSaver so TASK-storage's Postgres-backed saver can be substituted without touching this module, but durability itself is unverified until that swap happens. Also deferred to TASK-storage/TASK-hitl: actually calling VCSProvider.post_review for the to_post bucket, the FR-8 idempotency check, and logging discarded (sub-floor) findings per FR-5/FR-9 -- this graph's output is the routed finding buckets (to_post/discarded), not a fully wired posting pipeline.",
+      "status": "accepted",
+      "source": "session 2026-09-13, TASK-orchestration, advisor review",
+      "recorded_at": "2026-09-13T07:34:41.042Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-a7cbb63e",
+      "title": "Confidence routing thresholds: AUTO_POST_THRESHOLD=0.85, DISCARD_FLOOR=0.3",
+      "text": "SPEC.md's Risks section says thresholds are tunable and the HITL band should likely be wide, given a single 8B model scores its own findings (ASSUMPTION-8bf6c420), but gives no numeric defaults. Chose 0.85 auto-post / 0.3 discard-floor as a starting point matching that guidance (wide HITL band), read from AUTO_POST_THRESHOLD/DISCARD_FLOOR env vars per the NFR-3 config-key convention, not hardcoded. Expect retuning once real qwen3:8b confidence output is observed against real PRs (TASK-e2e-verification).",
+      "status": "accepted",
+      "source": "session 2026-09-13, TASK-orchestration",
+      "recorded_at": "2026-09-13T07:34:49.985Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-4fed71f4",
+      "title": "NFR-4 checkpointer durability is out of TASK-storage's scope as contracted",
+      "text": "DECISION-2b35d850 assigned NFR-4's durability half (a Postgres-backed BaseCheckpointSaver so a paused LangGraph run survives a process restart / different worker) to TASK-storage. TASK-storage's actual contract (genesis brief) only lists FR-8/FR-9/FR-10 -- the findings/audit/outcome schema and idempotent pre-write check -- with no scenario or gate covering a checkpointer. Building langgraph-checkpoint-postgres wiring was not done here to keep this task's diff to its declared contract. NFR-4 durability remains unimplemented and should be its own bounded task (e.g. TASK-checkpointer) before it's relied on in production.",
+      "status": "accepted",
+      "source": "advisor review, session 2026-09-13, TASK-storage",
+      "recorded_at": "2026-09-13T08:00:35.955Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-648a4bb5",
+      "title": "Finding gains a snippet field so TASK-hitl can re-anchor by content (FR-7)",
+      "text": "fingerprint (contracts.py) is sha256(path|normalized_snippet|category), a one-way hash; agents.py computed it from the model's raw snippet but never retained the snippet itself, so nothing downstream had text to search the current diff for on resume. FR-7 ('re-anchor by fingerprint against the current diff') is impossible without that text. Finding gains an optional snippet: str | None field (default None keeps existing Finding(...) call sites and tests valid); agents.py populates it with the same normalized snippet used to compute the fingerprint. orchestration.py needed no change -- its interrupt() payload already uses finding.model_dump(mode='json'), which picks up the new field automatically.",
+      "status": "accepted",
+      "source": "session 2026-09-13, TASK-hitl, user decision",
+      "recorded_at": "2026-09-13T14:13:21.939Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-b3356b1f",
+      "title": "TASK-hitl's /hitl/approve returns a routed, re-anchored decision -- it does not post to GitHub",
+      "text": "create_app's /hitl/approve endpoint (pr_review/hitl.py) authenticates the approver via GitHub OAuth token (FR-6/NFR-5), checks repo ownership (fails closed on any non-200 from the collaborator-permission endpoint, since GitHub returns 403 -- not 404 -- when the caller's own token lacks access to ask), resumes the paused LangGraph run, and re-anchors each to_post finding's line against a freshly-fetched diff (FR-7, resolving the actual new line via hunk-header-aware patch walking, not just checking the snippet exists somewhere in the patch blob). It deliberately does not call VCSProvider.post_review or storage.claim_finding (FR-8) -- that belongs to a not-yet-created posting step, same shape as DECISION-4fed71f4's checkpointer gap. ASSUMPTION-cdc6fa50 (claim-before-post crash can silently drop a finding) applies directly to whoever builds that step. Also noted: check_repo_ownership calls the collaborator-permission endpoint with the approver's own token, so the check is bounded by what that token itself is allowed to introspect -- an App-installation-token-based check would be independent of the caller's own scope, and is worth revisiting if approvers ever have narrowly-scoped tokens. Also noted: resuming a (repo, pr_number) with no paused checkpoint currently raises inside graph.ainvoke rather than returning a clean 404/409 -- not fixed here, flagged for whoever builds the posting/resume-routing layer.",
+      "status": "accepted",
+      "source": "advisor review, session 2026-09-13, TASK-hitl",
+      "recorded_at": "2026-09-13T14:20:30.917Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-7fc10dea",
+      "title": "TASK-e2e-verification wiring: single-process app+worker, ASSUMPTION-cdc6fa50 is now live code",
+      "text": "pr_review/app.py assembles the whole Phase 1 system as one process: FastAPI (webhook.create_app + hitl.create_app merged via merge_apps) plus an ARQ Worker run in-process as a background asyncio task (not arq's separate CLI), because the HITL endpoint and the worker's review_pr must share the exact same MemorySaver object (worker._MEMORY_CHECKPOINTER) for a resume to see a pause -- that only holds within one process, and DECISION-4fed71f4's Postgres checkpointer doesn't exist yet. This means a HITL pause does not survive a process restart; AC-2 is only verifiable within one continuous run of . pr_review/worker.py's post_findings function is the posting step DECISION-b3356b1f deferred: it now actually calls claim_finding (FR-8) then VCSProvider.post_review, so ASSUMPTION-cdc6fa50 (a crash between claim and post silently drops the finding) is reachable in running code, not just a documented future concern. LLMProvider gained complete_with_usage (pr_review/llm.py) returning (content, usage) rather than mutating shared state, specifically so concurrent lens/verify calls (asyncio.gather) can't cross-attribute token counts -- worker.AuditingLLMProvider acquires its own pooled connection per call for the same reason (a single shared asyncpg connection cannot serve concurrent queries; this was caught by a genuinely concurrent test, not reasoned about statically). scripts/verify_e2e.py is the task's gate: it checks observable evidence (GitHub review comments exist, no missing posted_findings vs audit rows, audit_log populated with no raw-content column) against a PR the human has already driven through the running system -- it does not orchestrate opening PRs, pushing commits, or approving HITL findings itself.",
+      "status": "accepted",
+      "source": "session 2026-09-13, TASK-e2e-verification",
+      "recorded_at": "2026-09-13T15:05:24.956Z",
+      "paths": [],
+      "tags": []
+    },
+    {
+      "id": "DECISION-40c84598",
+      "title": "app.py env reads moved into lifespan; verify_e2e's AC-3 check now cross-checks claims against real GitHub comments",
+      "text": "Follow-up to DECISION-7fc10dea after a second advisor pass: pr_review/app.py originally read GITHUB_APP_ID/GITHUB_APP_PRIVATE_KEY_PATH/GITHUB_WEBHOOK_SECRET and opened the private key file at module import time, so import pr_review.app (any tooling, not just uvicorn) failed with KeyError unless the environment was already fully configured. All env/file reads now happen inside _lifespan, run only when uvicorn actually starts serving; app = FastAPI(lifespan=_lifespan) is importable with zero environment configured, verified via env -i. Shutdown now awaits worker.close() before cancelling worker_task (previously cancelled first, racing the worker's own cleanup). Separately, scripts/verify_e2e.py's AC-3 check originally just asserted posted_findings rows existed without comparing them to actual GitHub comments -- its docstring claimed to catch ASSUMPTION-cdc6fa50's crash-drop gap but the code never did. _check_claims_match_posted_comments now compares len(claimed) to the real comment count fetched via list_review_comments and fails on mismatch.",
+      "status": "accepted",
+      "source": "advisor review, session 2026-09-13, TASK-e2e-verification",
+      "recorded_at": "2026-09-13T15:08:23.618Z",
+      "paths": [],
+      "tags": []
+    }
+  ],
+  "knowledge": [
+    {
+      "id": "KNOWLEDGE-b7cbe329",
+      "title": "Tiger Cloud Postgres service provisioned for TASK-storage",
+      "text": "Service id ovd30p1hsn (name pr-review-pipeline, region us-east-1, 0.5 CPU/2GB, POSTGRES, DEV environment). Connection string postgresql://tsdbadmin@ovd30p1hsn.su0twz9l37.tsdb.cloud.timescale.com:39281/tsdb?sslmode=require; password stored in system keyring, not in .env. Added DATABASE_URL to .env pointing at this service.",
+      "source": "tiger MCP, session 2026-09-13",
+      "tags": [],
+      "recorded_at": "2026-09-13T07:53:34.821Z",
+      "paths": []
+    },
+    {
+      "id": "KNOWLEDGE-2f835da4",
+      "title": "Tiger Cloud Postgres connection string (with password) lives in .env, not only the keyring",
+      "text": "Supersedes KNOWLEDGE-b7cbe329: DATABASE_URL in .env now includes the tsdbadmin password directly (postgresql://tsdbadmin:<password>@ovd30p1hsn...), because asyncpg needs it in the connection string -- the Tiger CLI's system-keyring storage is not consulted by the app or by asyncpg.create_pool. .env is gitignored. Service id ovd30p1hsn, region us-east-1, 0.5 CPU/2GB, DEV environment.",
+      "source": "session 2026-09-13, TASK-storage",
+      "tags": [],
+      "recorded_at": "2026-09-13T08:00:36.312Z",
+      "paths": []
+    }
+  ],
+  "tasks": [
+    {
+      "id": "SPEC-1",
+      "outcome": "Produce an approved, implementation-ready product specification",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [
+        "SPEC.md"
+      ],
+      "dependencies": [],
+      "requirements": [],
+      "gates": [
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Varun",
+            "reason": "Reviewed spec content, scope, decisions and risks in conversation; approved as-is.",
+            "source_hash": "8a70653c69b1b1e4cc8d4d9218c5c0f2d57c04eff0a43f2ca1eec651f065e275",
+            "observed_at": "2026-09-12T18:22:04.810Z"
+          },
+          "kind": "review"
+        }
+      ],
+      "next_action": "Interview the human, record durable context, and replace every placeholder in SPEC.md.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:08:05.493Z",
+      "updated_at": "2026-09-12T18:22:04.810Z"
+    },
+    {
+      "id": "TASK-contracts",
+      "outcome": "Define Finding schema and shared contracts used by every other Phase 1 component",
+      "state": "done",
+      "risk": "low",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-2"
+      ],
+      "inputs": [],
+      "environment": [],
+      "scenarios": [],
+      "gates": [
+        {
+          "id": "unit",
+          "kind": "command",
+          "command": "python -m pytest tests/test_contracts.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-contracts-unit-6191a766-732d-4e82-92e7-c9e7b8d0f55b.json",
+            "hash": "a7123a1e0a8c8036e073182f3c3e2af31ef93cbf476931708be1ec32f11c9953",
+            "source_hash": "d553c21c944b3396d8e38f482e6f5328a77052ec092b3fe505ea1b6c5be4148a",
+            "config_hash": "2a8a82509daaa6fa0320ae640a6a6434c2e7d50544d88a536366a0f98ed2b06c",
+            "observed_at": "2026-09-12T19:03:25.727Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:23:04.423Z",
+      "updated_at": "2026-09-12T19:03:30.343Z",
+      "base_manifest": {
+        ".env": "95a0ced6c42306da1748ba077e86b85aedcce4e8d657d14822a15c86a1358f5e",
+        "SPEC.md": "3c144f3d2fb008c0e326e0f810f2ecceced1da230f18b2bcf3b9b933e8e5265b",
+        "pr-review-plan.html": "87a9a171177a7ab9abc03ed754a8e8078e3c1ca49085b1ed707b03d09558d118"
+      }
+    },
+    {
+      "id": "TASK-test-repeat",
+      "outcome": "test",
+      "state": "rejected",
+      "risk": "low",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-1",
+        "FR-3"
+      ],
+      "inputs": [],
+      "environment": [],
+      "scenarios": [],
+      "gates": [
+        {
+          "id": "unit",
+          "kind": "command",
+          "command": "echo a",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "unit2",
+          "kind": "command",
+          "command": "echo b",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:23:10.003Z",
+      "updated_at": "2026-09-12T18:23:10.004Z"
+    },
+    {
+      "id": "TASK-llm-provider",
+      "outcome": "Ollama-backed LLM provider port with config-key model resolution (AGENT_MODEL_SECURITY/_QUALITY/_TEST_COVERAGE/_DOCS/_VERIFY), swappable for a hosted provider later",
+      "state": "done",
+      "risk": "low",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "NFR-2",
+        "NFR-3"
+      ],
+      "inputs": [],
+      "environment": [],
+      "scenarios": [],
+      "gates": [
+        {
+          "id": "unit",
+          "kind": "command",
+          "command": "python -m pytest tests/test_llm_provider.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-llm-provider-unit-3ae6475f-25b8-40c0-bcd5-2a8f9919177b.json",
+            "hash": "50c39af771233ce365658fc48bb726ec65112dc72477a77ce2dfe79c7cc7cdbf",
+            "source_hash": "f0b5ecd4e84145a0c54772e55c141c1f3c953e4153b80ca639c111ec59acfb06",
+            "config_hash": "f823b942925d00f0f045ff64eb9a6bd3194efa63d33c122e2fdc93131cbd4422",
+            "observed_at": "2026-09-12T19:04:36.291Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:23:49.344Z",
+      "updated_at": "2026-09-12T19:04:36.564Z",
+      "base_manifest": {
+        ".gitignore": "bc41fc4d427d27cb903a0daf3bd7d489d6e92c13f4133f36e57dcdd2ecf1b2d5",
+        ".python-version": "c873c269ee166fdf5e4fad805eab6a11cb0e1bb571c4587f38a564539b3a6d7b",
+        "SPEC.md": "3c144f3d2fb008c0e326e0f810f2ecceced1da230f18b2bcf3b9b933e8e5265b",
+        "pr-review-plan.html": "87a9a171177a7ab9abc03ed754a8e8078e3c1ca49085b1ed707b03d09558d118",
+        "pr_review/__init__.py": "78fb5f112b9e331e6d45cc7ba20c364344137c40dce44296fbdbe7854ba5bea2",
+        "pr_review/contracts.py": "696c47a97a796d085e526b09897d802c8f703880921d8805fe236ba2c9861e7a",
+        "pyproject.toml": "4c929802fad7c71a7b023d8c8485778aadfec261d2f467b87cc66e14f260825d",
+        "tests/test_contracts.py": "bc7b815ed5d7d1c2f49dfdac6b3e50d2115aeea3db38db29a291af75188cbd2b",
+        "uv.lock": "e650fdacfa0109354985b66613102d4e6288d721a2e6b56fe533dc6699132526"
+      }
+    },
+    {
+      "id": "TASK-webhook",
+      "outcome": "GitHub webhook receiver: HMAC verification over the raw body, event filtering, enqueues an ARQ job keyed by repo/pr/head_sha",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-1",
+        "NFR-1"
+      ],
+      "inputs": [],
+      "environment": [],
+      "scenarios": [],
+      "gates": [
+        {
+          "id": "unit",
+          "kind": "command",
+          "command": "python -m pytest tests/test_webhook.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-webhook-unit-dda60a2e-f574-45ec-8e91-386a53006e4c.json",
+            "hash": "37a9e80565057b809a3f1c2cd89b63c370a208a2490489628ca29a81e603f7f3",
+            "source_hash": "34e345c2eb5befcad64d31c1a2100c4742d3372e45c9f8e8d7f705ffa448a237",
+            "config_hash": "bc982f68e7c2158fb2c58a6d57c9ffa2d2227d9bec7f8a42673b15a16b2d6bd2",
+            "observed_at": "2026-09-12T19:05:47.294Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "kind": "review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-webhook-independent-review-57b3f6db-64d1-44e6-ac15-5180ae3090be.json",
+            "hash": "465aa4943a070887239bdaf998defddc61c7eff2942c39d64f7f1a81a510b39d",
+            "source_hash": "34e345c2eb5befcad64d31c1a2100c4742d3372e45c9f8e8d7f705ffa448a237",
+            "config_hash": "bc982f68e7c2158fb2c58a6d57c9ffa2d2227d9bec7f8a42673b15a16b2d6bd2",
+            "observed_at": "2026-09-13T07:14:06.999Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:23:49.497Z",
+      "updated_at": "2026-09-13T07:14:27.610Z",
+      "base_manifest": {
+        ".gitignore": "bc41fc4d427d27cb903a0daf3bd7d489d6e92c13f4133f36e57dcdd2ecf1b2d5",
+        ".python-version": "c873c269ee166fdf5e4fad805eab6a11cb0e1bb571c4587f38a564539b3a6d7b",
+        "SPEC.md": "3c144f3d2fb008c0e326e0f810f2ecceced1da230f18b2bcf3b9b933e8e5265b",
+        "pr-review-plan.html": "87a9a171177a7ab9abc03ed754a8e8078e3c1ca49085b1ed707b03d09558d118",
+        "pr_review/__init__.py": "78fb5f112b9e331e6d45cc7ba20c364344137c40dce44296fbdbe7854ba5bea2",
+        "pr_review/contracts.py": "696c47a97a796d085e526b09897d802c8f703880921d8805fe236ba2c9861e7a",
+        "pr_review/llm.py": "03a2ba8d798dea90e77901e765f07ab273e35607c9651fb103ad022f22bb7cee",
+        "pyproject.toml": "5d7fcb941a91d882d33e18ef75f217f193b03583548c2d20f8faccb81bf0cf02",
+        "tests/test_contracts.py": "bc7b815ed5d7d1c2f49dfdac6b3e50d2115aeea3db38db29a291af75188cbd2b",
+        "tests/test_llm_provider.py": "4cdeffab04eb6d7c71ba4d16286c7c04230573bb3f903af634b9a72c330cf177",
+        "uv.lock": "c60f7ec8d429774c36887f78bee557f8a7dc8a7e00d0581fecef5d2ace16a867"
+      }
+    },
+    {
+      "id": "TASK-github-app",
+      "outcome": "GitHub App auth (JWT + installation token mint/cache) implementing VCSProvider: fetch_diff, fetch_file, post_review, resolve_comment",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-1"
+      ],
+      "inputs": [],
+      "environment": [],
+      "scenarios": [],
+      "gates": [
+        {
+          "id": "unit",
+          "kind": "command",
+          "command": "python -m pytest tests/test_github_app.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-github-app-unit-3941c46a-845b-4889-a021-eccc8d0d437f.json",
+            "hash": "c74d7bff98ec0849f73f1616d58cf4140ce4ce059cf01bbe83fc4dd2989911d5",
+            "source_hash": "c1220687acf66b198a033a2cf1ac3caff315f439cff1ca69827b86f131f5f660",
+            "config_hash": "87622369cc6a567ca58c8ce6e5d59254e24794c06d62e1abafa2d350622a103c",
+            "observed_at": "2026-09-13T07:19:47.140Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "kind": "review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-github-app-independent-review-6feacd36-2830-4fd4-96a4-ed4d21475478.json",
+            "hash": "e7469f6578fdc7c51b1e18cdac1d750b5f25635ae400811ab76672f473656545",
+            "source_hash": "c1220687acf66b198a033a2cf1ac3caff315f439cff1ca69827b86f131f5f660",
+            "config_hash": "87622369cc6a567ca58c8ce6e5d59254e24794c06d62e1abafa2d350622a103c",
+            "observed_at": "2026-09-13T07:25:40.160Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:23:49.629Z",
+      "updated_at": "2026-09-13T07:26:08.444Z",
+      "base_manifest": {
+        ".gitignore": "bc41fc4d427d27cb903a0daf3bd7d489d6e92c13f4133f36e57dcdd2ecf1b2d5",
+        ".python-version": "c873c269ee166fdf5e4fad805eab6a11cb0e1bb571c4587f38a564539b3a6d7b",
+        "SPEC.md": "3c144f3d2fb008c0e326e0f810f2ecceced1da230f18b2bcf3b9b933e8e5265b",
+        "pr-review-plan.html": "87a9a171177a7ab9abc03ed754a8e8078e3c1ca49085b1ed707b03d09558d118",
+        "pr_review/__init__.py": "78fb5f112b9e331e6d45cc7ba20c364344137c40dce44296fbdbe7854ba5bea2",
+        "pr_review/contracts.py": "696c47a97a796d085e526b09897d802c8f703880921d8805fe236ba2c9861e7a",
+        "pr_review/llm.py": "03a2ba8d798dea90e77901e765f07ab273e35607c9651fb103ad022f22bb7cee",
+        "pr_review/webhook.py": "dcd2d1466dae953d6a5b0b99527eb7503b2ffc41a45c1b155ac1b5eafd188edf",
+        "pyproject.toml": "7bbe92ff25cbc3bf16fd4cfb0ba1cf43f2f81638ee9abe5f1c2defacbdcc45bc",
+        "tests/test_contracts.py": "bc7b815ed5d7d1c2f49dfdac6b3e50d2115aeea3db38db29a291af75188cbd2b",
+        "tests/test_llm_provider.py": "4cdeffab04eb6d7c71ba4d16286c7c04230573bb3f903af634b9a72c330cf177",
+        "tests/test_webhook.py": "e866f792ae7fdc4dc3e23f2301b68c3a03bd886d1f4b78b1b8b3a5abd1592271",
+        "uv.lock": "ebb42e1e93b43a013faee9f7e863134e04b0c7bf76da4239831bc2aeba753f1f"
+      }
+    },
+    {
+      "id": "TASK-agents",
+      "outcome": "Four lens agents (security, quality, test_coverage, docs) mapping diff -> list[Finding]; docs lens gated to public-surface changes only",
+      "state": "done",
+      "risk": "low",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-2",
+        "FR-3"
+      ],
+      "inputs": [],
+      "environment": [],
+      "scenarios": [],
+      "gates": [
+        {
+          "id": "unit",
+          "kind": "command",
+          "command": "python -m pytest tests/test_agents.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-agents-unit-702027db-853f-429f-ba79-c242203b230d.json",
+            "hash": "f03d04c2350980b7b4a19c229fa679fcb50e91b028fe8c575d691c2782ec3ee3",
+            "source_hash": "ae0ae84bee7ee2e6d594dea11c86cda20fe60f78c74566597331c0ee905b2d43",
+            "config_hash": "2e262234cb558b15199b806c2c2db50acc55aa11b7c6de7e442a53ab7b33e4ac",
+            "observed_at": "2026-09-13T07:29:23.083Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:23:49.766Z",
+      "updated_at": "2026-09-13T07:29:31.063Z",
+      "base_manifest": {
+        ".gitignore": "bc41fc4d427d27cb903a0daf3bd7d489d6e92c13f4133f36e57dcdd2ecf1b2d5",
+        ".python-version": "c873c269ee166fdf5e4fad805eab6a11cb0e1bb571c4587f38a564539b3a6d7b",
+        "SPEC.md": "3c144f3d2fb008c0e326e0f810f2ecceced1da230f18b2bcf3b9b933e8e5265b",
+        "pr-review-plan.html": "87a9a171177a7ab9abc03ed754a8e8078e3c1ca49085b1ed707b03d09558d118",
+        "pr_review/__init__.py": "78fb5f112b9e331e6d45cc7ba20c364344137c40dce44296fbdbe7854ba5bea2",
+        "pr_review/contracts.py": "696c47a97a796d085e526b09897d802c8f703880921d8805fe236ba2c9861e7a",
+        "pr_review/github_app.py": "ebaeac260bfc027a8acf3e98e2776aaa674c3a687b4b27af7ed0751464c4cbc6",
+        "pr_review/llm.py": "03a2ba8d798dea90e77901e765f07ab273e35607c9651fb103ad022f22bb7cee",
+        "pr_review/webhook.py": "dcd2d1466dae953d6a5b0b99527eb7503b2ffc41a45c1b155ac1b5eafd188edf",
+        "pyproject.toml": "c0f3389e5508d6877e6bd301aaf567d462d3d9b1d27f7f99ca2a8d9861334a15",
+        "tests/test_contracts.py": "bc7b815ed5d7d1c2f49dfdac6b3e50d2115aeea3db38db29a291af75188cbd2b",
+        "tests/test_github_app.py": "d96b93dc89587fad766b79df9dbac6df926f9b2acfea5e5a16bcaab19fecde90",
+        "tests/test_llm_provider.py": "4cdeffab04eb6d7c71ba4d16286c7c04230573bb3f903af634b9a72c330cf177",
+        "tests/test_webhook.py": "e866f792ae7fdc4dc3e23f2301b68c3a03bd886d1f4b78b1b8b3a5abd1592271",
+        "uv.lock": "8275f41cb3edf25e1551b70ab338464e91ec52661573fd8c0ed308e047edd714"
+      }
+    },
+    {
+      "id": "TASK-orchestration",
+      "outcome": "LangGraph graph: fan-out to four agents -> verify (confidence score) -> route (auto-post/HITL/discard) -> interrupt()/resume without blocking the ARQ worker",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-4",
+        "FR-5",
+        "NFR-4"
+      ],
+      "inputs": [],
+      "environment": [],
+      "scenarios": [],
+      "gates": [
+        {
+          "id": "unit",
+          "kind": "command",
+          "command": "python -m pytest tests/test_orchestration.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-orchestration-unit-87762424-3a6b-4aee-aef6-4b11eda1b0cc.json",
+            "hash": "cffcca99873397042122edad854229fe1363d6ac5799975d7c949a8331a8ee3e",
+            "source_hash": "1985a528a48be9b8fadd264239596b8d1130b07bcc2ec8b7399d955a32647a7e",
+            "config_hash": "13bc64d977734c83d99f4f7ddda052315287ef558e1935529940e82ee697385b",
+            "observed_at": "2026-09-13T07:34:55.137Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "kind": "review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-orchestration-independent-review-163d1735-f8a6-46ed-9559-e4cdde77055c.json",
+            "hash": "ce01722d4f6159b35c5cd0e4ef575370e5f9732ee57f0ed9d6e5f1da736ddfeb",
+            "source_hash": "1985a528a48be9b8fadd264239596b8d1130b07bcc2ec8b7399d955a32647a7e",
+            "config_hash": "13bc64d977734c83d99f4f7ddda052315287ef558e1935529940e82ee697385b",
+            "observed_at": "2026-09-13T07:38:00.818Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:23:49.895Z",
+      "updated_at": "2026-09-13T07:38:13.449Z",
+      "base_manifest": {
+        ".gitignore": "bc41fc4d427d27cb903a0daf3bd7d489d6e92c13f4133f36e57dcdd2ecf1b2d5",
+        ".python-version": "c873c269ee166fdf5e4fad805eab6a11cb0e1bb571c4587f38a564539b3a6d7b",
+        "SPEC.md": "3c144f3d2fb008c0e326e0f810f2ecceced1da230f18b2bcf3b9b933e8e5265b",
+        "pr-review-plan.html": "87a9a171177a7ab9abc03ed754a8e8078e3c1ca49085b1ed707b03d09558d118",
+        "pr_review/__init__.py": "78fb5f112b9e331e6d45cc7ba20c364344137c40dce44296fbdbe7854ba5bea2",
+        "pr_review/agents.py": "a2cc1a0d2eb52e7806ca800b979cd41365a4ce6479f664c14dc9884db49d13cb",
+        "pr_review/contracts.py": "696c47a97a796d085e526b09897d802c8f703880921d8805fe236ba2c9861e7a",
+        "pr_review/github_app.py": "ebaeac260bfc027a8acf3e98e2776aaa674c3a687b4b27af7ed0751464c4cbc6",
+        "pr_review/llm.py": "03a2ba8d798dea90e77901e765f07ab273e35607c9651fb103ad022f22bb7cee",
+        "pr_review/webhook.py": "dcd2d1466dae953d6a5b0b99527eb7503b2ffc41a45c1b155ac1b5eafd188edf",
+        "pyproject.toml": "c0f3389e5508d6877e6bd301aaf567d462d3d9b1d27f7f99ca2a8d9861334a15",
+        "tests/test_agents.py": "40fdbcf0d8fd0d25ba6aa67843a008b54d0f2cda6a4fb234d9daca4cb9bd1ab4",
+        "tests/test_contracts.py": "bc7b815ed5d7d1c2f49dfdac6b3e50d2115aeea3db38db29a291af75188cbd2b",
+        "tests/test_github_app.py": "d96b93dc89587fad766b79df9dbac6df926f9b2acfea5e5a16bcaab19fecde90",
+        "tests/test_llm_provider.py": "4cdeffab04eb6d7c71ba4d16286c7c04230573bb3f903af634b9a72c330cf177",
+        "tests/test_webhook.py": "e866f792ae7fdc4dc3e23f2301b68c3a03bd886d1f4b78b1b8b3a5abd1592271",
+        "uv.lock": "8275f41cb3edf25e1551b70ab338464e91ec52661573fd8c0ed308e047edd714"
+      }
+    },
+    {
+      "id": "TASK-storage",
+      "outcome": "Postgres schema: findings table (idempotency key), audit table (model/tokens/latency, no raw content), outcome table; idempotent pre-write check",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-8",
+        "FR-9",
+        "FR-10"
+      ],
+      "inputs": [],
+      "environment": [],
+      "scenarios": [],
+      "gates": [
+        {
+          "id": "unit",
+          "kind": "command",
+          "command": "python -m pytest tests/test_storage.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-storage-unit-126b57d4-c9db-4455-a21e-95bca363133e.json",
+            "hash": "1adfdca3c3265d1e86e3a067bb28c90b5fa49f0b4c9b02ad230ae608e77eecbf",
+            "source_hash": "4f888273cb280d2948968bee661f3e0ae49390740f42a86e6184e8379baa2ab6",
+            "config_hash": "57cb097776a09d83230a73dd1461be47869081e6edadbd7dc9d6d84611f2ff6c",
+            "observed_at": "2026-09-13T08:01:21.883Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "kind": "review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-storage-independent-review-1704603a-72d0-40b9-bd9f-17870988cd21.json",
+            "hash": "ebe7dee7904c3c2f1f5db6a7cfd96c5e80d92e0a19d8ef6e6ed1cacf09624996",
+            "source_hash": "4f888273cb280d2948968bee661f3e0ae49390740f42a86e6184e8379baa2ab6",
+            "config_hash": "57cb097776a09d83230a73dd1461be47869081e6edadbd7dc9d6d84611f2ff6c",
+            "observed_at": "2026-09-13T12:01:54.601Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:23:50.024Z",
+      "updated_at": "2026-09-13T12:02:13.111Z",
+      "base_manifest": {
+        ".gitignore": "bc41fc4d427d27cb903a0daf3bd7d489d6e92c13f4133f36e57dcdd2ecf1b2d5",
+        ".python-version": "c873c269ee166fdf5e4fad805eab6a11cb0e1bb571c4587f38a564539b3a6d7b",
+        "SPEC.md": "3c144f3d2fb008c0e326e0f810f2ecceced1da230f18b2bcf3b9b933e8e5265b",
+        "pr-review-plan.html": "87a9a171177a7ab9abc03ed754a8e8078e3c1ca49085b1ed707b03d09558d118",
+        "pr_review/__init__.py": "78fb5f112b9e331e6d45cc7ba20c364344137c40dce44296fbdbe7854ba5bea2",
+        "pr_review/agents.py": "a2cc1a0d2eb52e7806ca800b979cd41365a4ce6479f664c14dc9884db49d13cb",
+        "pr_review/contracts.py": "696c47a97a796d085e526b09897d802c8f703880921d8805fe236ba2c9861e7a",
+        "pr_review/github_app.py": "ebaeac260bfc027a8acf3e98e2776aaa674c3a687b4b27af7ed0751464c4cbc6",
+        "pr_review/llm.py": "03a2ba8d798dea90e77901e765f07ab273e35607c9651fb103ad022f22bb7cee",
+        "pr_review/orchestration.py": "14db6d5d684bb9bd027ed4b98dcc80fed0322572af0059b86e375d2d85b20fe5",
+        "pr_review/webhook.py": "dcd2d1466dae953d6a5b0b99527eb7503b2ffc41a45c1b155ac1b5eafd188edf",
+        "pyproject.toml": "39e9a39beb176ffdd96c06457a644fe7b99b7759c063dc00b0c3de76187350d3",
+        "tests/test_agents.py": "40fdbcf0d8fd0d25ba6aa67843a008b54d0f2cda6a4fb234d9daca4cb9bd1ab4",
+        "tests/test_contracts.py": "bc7b815ed5d7d1c2f49dfdac6b3e50d2115aeea3db38db29a291af75188cbd2b",
+        "tests/test_github_app.py": "d96b93dc89587fad766b79df9dbac6df926f9b2acfea5e5a16bcaab19fecde90",
+        "tests/test_llm_provider.py": "4cdeffab04eb6d7c71ba4d16286c7c04230573bb3f903af634b9a72c330cf177",
+        "tests/test_orchestration.py": "73950e8ecadb9aca1368c78cf0d86a2373d6cf7327328e1e7ad2d4911f239586",
+        "tests/test_webhook.py": "e866f792ae7fdc4dc3e23f2301b68c3a03bd886d1f4b78b1b8b3a5abd1592271",
+        "uv.lock": "bc7cb16e8d30bbfa24c6a65c54b768ede7aa03c4a8c035ac22d65ce2d12654bf"
+      }
+    },
+    {
+      "id": "TASK-hitl",
+      "outcome": "HITL approval endpoint (authn/authz/ownership check); on approval, re-anchor finding by fingerprint against current diff, fall back to file-level summary note if the line is gone",
+      "state": "done",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-6",
+        "FR-7",
+        "NFR-5"
+      ],
+      "inputs": [],
+      "environment": [],
+      "scenarios": [],
+      "gates": [
+        {
+          "id": "unit",
+          "kind": "command",
+          "command": "python -m pytest tests/test_hitl.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-hitl-unit-84a4d6f3-6d53-4be4-8e53-500b106bdf32.json",
+            "hash": "43153a7e358040ee8ab5d59d6f7f0a71f8978b11d36cdc0b48b09227333fcd3e",
+            "source_hash": "de323d97a2b42832c61a8cfa7cc8b6d1da80b6425f1338804043c3bcf59261d9",
+            "config_hash": "221925ad4f28667a45c3b27d9277202ac834379f5f530689c9102a3ce534c9b0",
+            "observed_at": "2026-09-13T14:37:08.717Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "kind": "review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/TASK-hitl-independent-review-e1346a15-3f07-4d02-906c-f788f277974c.json",
+            "hash": "bf435e6f6720dd0d7aa8876a5b2d6d9c4355a2c330ca807598b2549aefb006a3",
+            "source_hash": "de323d97a2b42832c61a8cfa7cc8b6d1da80b6425f1338804043c3bcf59261d9",
+            "config_hash": "221925ad4f28667a45c3b27d9277202ac834379f5f530689c9102a3ce534c9b0",
+            "observed_at": "2026-09-13T14:46:44.030Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:23:50.149Z",
+      "updated_at": "2026-09-13T14:46:51.023Z",
+      "base_manifest": {
+        ".gitignore": "bc41fc4d427d27cb903a0daf3bd7d489d6e92c13f4133f36e57dcdd2ecf1b2d5",
+        ".python-version": "c873c269ee166fdf5e4fad805eab6a11cb0e1bb571c4587f38a564539b3a6d7b",
+        "SPEC.md": "3c144f3d2fb008c0e326e0f810f2ecceced1da230f18b2bcf3b9b933e8e5265b",
+        "pr-review-plan.html": "87a9a171177a7ab9abc03ed754a8e8078e3c1ca49085b1ed707b03d09558d118",
+        "pr_review/__init__.py": "78fb5f112b9e331e6d45cc7ba20c364344137c40dce44296fbdbe7854ba5bea2",
+        "pr_review/agents.py": "a2cc1a0d2eb52e7806ca800b979cd41365a4ce6479f664c14dc9884db49d13cb",
+        "pr_review/contracts.py": "696c47a97a796d085e526b09897d802c8f703880921d8805fe236ba2c9861e7a",
+        "pr_review/github_app.py": "ebaeac260bfc027a8acf3e98e2776aaa674c3a687b4b27af7ed0751464c4cbc6",
+        "pr_review/llm.py": "03a2ba8d798dea90e77901e765f07ab273e35607c9651fb103ad022f22bb7cee",
+        "pr_review/orchestration.py": "14db6d5d684bb9bd027ed4b98dcc80fed0322572af0059b86e375d2d85b20fe5",
+        "pr_review/storage.py": "56e24935ce2ba02b86eaf7bb7b8fcfa1c62feb95abcabad02cee1a8ae150f4d1",
+        "pr_review/webhook.py": "dcd2d1466dae953d6a5b0b99527eb7503b2ffc41a45c1b155ac1b5eafd188edf",
+        "pyproject.toml": "03fe8d8f1a0ec27c292e624eb098d06baa1a591226a8d03750da71735a518c55",
+        "tests/conftest.py": "b7448cde9b9e85c697fa9e51107788b1aaf90e5329319e4c146b8e1dc6795e39",
+        "tests/test_agents.py": "40fdbcf0d8fd0d25ba6aa67843a008b54d0f2cda6a4fb234d9daca4cb9bd1ab4",
+        "tests/test_contracts.py": "bc7b815ed5d7d1c2f49dfdac6b3e50d2115aeea3db38db29a291af75188cbd2b",
+        "tests/test_github_app.py": "d96b93dc89587fad766b79df9dbac6df926f9b2acfea5e5a16bcaab19fecde90",
+        "tests/test_llm_provider.py": "4cdeffab04eb6d7c71ba4d16286c7c04230573bb3f903af634b9a72c330cf177",
+        "tests/test_orchestration.py": "73950e8ecadb9aca1368c78cf0d86a2373d6cf7327328e1e7ad2d4911f239586",
+        "tests/test_storage.py": "ca9d99ca028c0123db17507e73539fcc7e4a7e2efe3e02a973ba957d3c176c33",
+        "tests/test_webhook.py": "e866f792ae7fdc4dc3e23f2301b68c3a03bd886d1f4b78b1b8b3a5abd1592271",
+        "uv.lock": "0712b8799eeeb2879d514e4067991520606f0f53e3b53ff9b068db533437bd3b"
+      }
+    },
+    {
+      "id": "TASK-e2e-verification",
+      "outcome": "Behavioral verification against a real PR on the test repo: correct inline comments, HITL re-anchor after a push, idempotent retry, gated docs lens, audit content, cross-repo install",
+      "state": "active",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ],
+      "inputs": [],
+      "environment": [],
+      "scenarios": [],
+      "gates": [
+        {
+          "id": "manual",
+          "kind": "command",
+          "command": "python scripts/verify_e2e.py",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "kind": "review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-12T18:23:50.277Z",
+      "updated_at": "2026-09-12T18:23:50.278Z",
+      "base_manifest": {
+        ".gitignore": "bc41fc4d427d27cb903a0daf3bd7d489d6e92c13f4133f36e57dcdd2ecf1b2d5",
+        ".python-version": "c873c269ee166fdf5e4fad805eab6a11cb0e1bb571c4587f38a564539b3a6d7b",
+        "SPEC.md": "3c144f3d2fb008c0e326e0f810f2ecceced1da230f18b2bcf3b9b933e8e5265b",
+        "pr-review-plan.html": "87a9a171177a7ab9abc03ed754a8e8078e3c1ca49085b1ed707b03d09558d118",
+        "pr_review/__init__.py": "78fb5f112b9e331e6d45cc7ba20c364344137c40dce44296fbdbe7854ba5bea2",
+        "pr_review/agents.py": "12c2ec18870eb53cede10237beb2f24a14386c1bc58c661b67948f2c0c3ff57f",
+        "pr_review/contracts.py": "fbcba1696b54357b617854cc4b10322e6f7f24caba4f5a407cb3deb6a8c01f08",
+        "pr_review/github_app.py": "ebaeac260bfc027a8acf3e98e2776aaa674c3a687b4b27af7ed0751464c4cbc6",
+        "pr_review/hitl.py": "b7f7f42a28eb768ed81b2ee0eeec87a875ff9e2368096d53066de18da4af2fef",
+        "pr_review/llm.py": "03a2ba8d798dea90e77901e765f07ab273e35607c9651fb103ad022f22bb7cee",
+        "pr_review/orchestration.py": "14db6d5d684bb9bd027ed4b98dcc80fed0322572af0059b86e375d2d85b20fe5",
+        "pr_review/storage.py": "56e24935ce2ba02b86eaf7bb7b8fcfa1c62feb95abcabad02cee1a8ae150f4d1",
+        "pr_review/webhook.py": "dcd2d1466dae953d6a5b0b99527eb7503b2ffc41a45c1b155ac1b5eafd188edf",
+        "pyproject.toml": "03fe8d8f1a0ec27c292e624eb098d06baa1a591226a8d03750da71735a518c55",
+        "tests/conftest.py": "b7448cde9b9e85c697fa9e51107788b1aaf90e5329319e4c146b8e1dc6795e39",
+        "tests/test_agents.py": "ae91decfd06adb456a47bf04a79388900d880b61b8dc5cdf7228e72ec9a8b828",
+        "tests/test_contracts.py": "bc7b815ed5d7d1c2f49dfdac6b3e50d2115aeea3db38db29a291af75188cbd2b",
+        "tests/test_github_app.py": "d96b93dc89587fad766b79df9dbac6df926f9b2acfea5e5a16bcaab19fecde90",
+        "tests/test_hitl.py": "c8eab3d6bc68b393326965436573631e8fa5e58537fedb03d3359f4efcf159fc",
+        "tests/test_llm_provider.py": "4cdeffab04eb6d7c71ba4d16286c7c04230573bb3f903af634b9a72c330cf177",
+        "tests/test_orchestration.py": "73950e8ecadb9aca1368c78cf0d86a2373d6cf7327328e1e7ad2d4911f239586",
+        "tests/test_storage.py": "ca9d99ca028c0123db17507e73539fcc7e4a7e2efe3e02a973ba957d3c176c33",
+        "tests/test_webhook.py": "e866f792ae7fdc4dc3e23f2301b68c3a03bd886d1f4b78b1b8b3a5abd1592271",
+        "uv.lock": "0712b8799eeeb2879d514e4067991520606f0f53e3b53ff9b068db533437bd3b"
+      }
+    }
+  ],
+  "learning_proposals": [],
+  "cleanup_proposals": [],
+  "controls": [
+    {
+      "id": "7ba5b1e4-2801-4d9c-92c3-a5c490edebdd",
+      "at": "2026-09-12T18:23:35.222Z",
+      "action": "reject",
+      "task": "TASK-test-repeat",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "57b3f6db-64d1-44e6-ac15-5180ae3090be",
+      "at": "2026-09-13T07:14:06.999Z",
+      "action": "approve",
+      "task": "TASK-webhook",
+      "human": "Varun Balwani",
+      "reason": "Reviewed webhook.py + test_webhook.py: HMAC verification precedes all processing, event/action filtering correct, enqueue signature matches ARQ job key.",
+      "revision": null
+    },
+    {
+      "id": "6feacd36-2830-4fd4-96a4-ed4d21475478",
+      "at": "2026-09-13T07:25:40.160Z",
+      "action": "approve",
+      "task": "TASK-github-app",
+      "human": "Varun Balwani",
+      "reason": "...",
+      "revision": null
+    },
+    {
+      "id": "163d1735-f8a6-46ed-9559-e4cdde77055c",
+      "at": "2026-09-13T07:38:00.818Z",
+      "action": "approve",
+      "task": "TASK-orchestration",
+      "human": "Varun Balwani",
+      "reason": "...",
+      "revision": null
+    },
+    {
+      "id": "1704603a-72d0-40b9-bd9f-17870988cd21",
+      "at": "2026-09-13T12:01:54.601Z",
+      "action": "approve",
+      "task": "TASK-storage",
+      "human": "Varun Balwani",
+      "reason": "reviewed pr_review/storage.py + tests/test_storage.py diff and gate evidence",
+      "revision": null
+    },
+    {
+      "id": "e1346a15-3f07-4d02-906c-f788f277974c",
+      "at": "2026-09-13T14:46:44.030Z",
+      "action": "approve",
+      "task": "TASK-hitl",
+      "human": "Varun Balwani",
+      "reason": "reviewed pr_review/hitl.py auth/ownership/re-anchor path + tests/test_hitl.py + DECISION-648a4bb5/b3356b1f",
+      "revision": null
+    }
+  ],
+  "attempts": [
+    {
+      "id": "6191a766-732d-4e82-92e7-c9e7b8d0f55b",
+      "task": "TASK-contracts",
+      "kind": "gate",
+      "command": "python -m pytest tests/test_contracts.py -q",
+      "timeout": 120000,
+      "authorization": null,
+      "pid": 16248,
+      "child_pid": 16314,
+      "started_at": "2026-09-12T19:03:25.281Z",
+      "status": "passed",
+      "before_hash": "d553c21c944b3396d8e38f482e6f5328a77052ec092b3fe505ea1b6c5be4148a",
+      "config_hash": "2a8a82509daaa6fa0320ae640a6a6434c2e7d50544d88a536366a0f98ed2b06c",
+      "environment": {
+        "node": "v22.22.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+        "variables": {}
+      },
+      "cost": null,
+      "stop_reason": null,
+      "ended_at": "2026-09-12T19:03:25.727Z"
+    },
+    {
+      "id": "3ae6475f-25b8-40c0-bcd5-2a8f9919177b",
+      "task": "TASK-llm-provider",
+      "kind": "gate",
+      "command": "python -m pytest tests/test_llm_provider.py -q",
+      "timeout": 120000,
+      "authorization": null,
+      "pid": 16835,
+      "child_pid": 16914,
+      "started_at": "2026-09-12T19:04:35.914Z",
+      "status": "passed",
+      "before_hash": "f0b5ecd4e84145a0c54772e55c141c1f3c953e4153b80ca639c111ec59acfb06",
+      "config_hash": "f823b942925d00f0f045ff64eb9a6bd3194efa63d33c122e2fdc93131cbd4422",
+      "environment": {
+        "node": "v22.22.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+        "variables": {}
+      },
+      "cost": null,
+      "stop_reason": null,
+      "ended_at": "2026-09-12T19:04:36.291Z"
+    },
+    {
+      "id": "dda60a2e-f574-45ec-8e91-386a53006e4c",
+      "task": "TASK-webhook",
+      "kind": "gate",
+      "command": "python -m pytest tests/test_webhook.py -q",
+      "timeout": 120000,
+      "authorization": null,
+      "pid": 17402,
+      "child_pid": 17494,
+      "started_at": "2026-09-12T19:05:46.693Z",
+      "status": "passed",
+      "before_hash": "34e345c2eb5befcad64d31c1a2100c4742d3372e45c9f8e8d7f705ffa448a237",
+      "config_hash": "bc982f68e7c2158fb2c58a6d57c9ffa2d2227d9bec7f8a42673b15a16b2d6bd2",
+      "environment": {
+        "node": "v22.22.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+        "variables": {}
+      },
+      "cost": null,
+      "stop_reason": null,
+      "ended_at": "2026-09-12T19:05:47.294Z"
+    },
+    {
+      "id": "3941c46a-845b-4889-a021-eccc8d0d437f",
+      "task": "TASK-github-app",
+      "kind": "gate",
+      "command": "python -m pytest tests/test_github_app.py -q",
+      "timeout": 120000,
+      "authorization": null,
+      "pid": 9186,
+      "child_pid": 9286,
+      "started_at": "2026-09-13T07:19:45.832Z",
+      "status": "passed",
+      "before_hash": "c1220687acf66b198a033a2cf1ac3caff315f439cff1ca69827b86f131f5f660",
+      "config_hash": "87622369cc6a567ca58c8ce6e5d59254e24794c06d62e1abafa2d350622a103c",
+      "environment": {
+        "node": "v22.22.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+        "variables": {}
+      },
+      "cost": null,
+      "stop_reason": null,
+      "ended_at": "2026-09-13T07:19:47.140Z"
+    },
+    {
+      "id": "702027db-853f-429f-ba79-c242203b230d",
+      "task": "TASK-agents",
+      "kind": "gate",
+      "command": "python -m pytest tests/test_agents.py -q",
+      "timeout": 120000,
+      "authorization": null,
+      "pid": 10877,
+      "child_pid": 10999,
+      "started_at": "2026-09-13T07:29:22.423Z",
+      "status": "passed",
+      "before_hash": "ae0ae84bee7ee2e6d594dea11c86cda20fe60f78c74566597331c0ee905b2d43",
+      "config_hash": "2e262234cb558b15199b806c2c2db50acc55aa11b7c6de7e442a53ab7b33e4ac",
+      "environment": {
+        "node": "v22.22.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+        "variables": {}
+      },
+      "cost": null,
+      "stop_reason": null,
+      "ended_at": "2026-09-13T07:29:23.083Z"
+    },
+    {
+      "id": "87762424-3a6b-4aee-aef6-4b11eda1b0cc",
+      "task": "TASK-orchestration",
+      "kind": "gate",
+      "command": "python -m pytest tests/test_orchestration.py -q",
+      "timeout": 120000,
+      "authorization": null,
+      "pid": 12276,
+      "child_pid": 12409,
+      "started_at": "2026-09-13T07:34:54.020Z",
+      "status": "passed",
+      "before_hash": "1985a528a48be9b8fadd264239596b8d1130b07bcc2ec8b7399d955a32647a7e",
+      "config_hash": "13bc64d977734c83d99f4f7ddda052315287ef558e1935529940e82ee697385b",
+      "environment": {
+        "node": "v22.22.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+        "variables": {}
+      },
+      "cost": null,
+      "stop_reason": null,
+      "ended_at": "2026-09-13T07:34:55.137Z"
+    },
+    {
+      "id": "126b57d4-c9db-4455-a21e-95bca363133e",
+      "task": "TASK-storage",
+      "kind": "gate",
+      "command": "python -m pytest tests/test_storage.py -q",
+      "timeout": 120000,
+      "authorization": null,
+      "pid": 17433,
+      "child_pid": 17589,
+      "started_at": "2026-09-13T08:00:52.068Z",
+      "status": "passed",
+      "before_hash": "4f888273cb280d2948968bee661f3e0ae49390740f42a86e6184e8379baa2ab6",
+      "config_hash": "57cb097776a09d83230a73dd1461be47869081e6edadbd7dc9d6d84611f2ff6c",
+      "environment": {
+        "node": "v22.22.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+        "variables": {}
+      },
+      "cost": null,
+      "stop_reason": null,
+      "ended_at": "2026-09-13T08:01:21.883Z"
+    },
+    {
+      "id": "84a4d6f3-6d53-4be4-8e53-500b106bdf32",
+      "task": "TASK-hitl",
+      "kind": "gate",
+      "command": "python -m pytest tests/test_hitl.py -q",
+      "timeout": 120000,
+      "authorization": null,
+      "pid": 22920,
+      "child_pid": 23097,
+      "started_at": "2026-09-13T14:37:07.534Z",
+      "status": "passed",
+      "before_hash": "de323d97a2b42832c61a8cfa7cc8b6d1da80b6425f1338804043c3bcf59261d9",
+      "config_hash": "221925ad4f28667a45c3b27d9277202ac834379f5f530689c9102a3ce534c9b0",
+      "environment": {
+        "node": "v22.22.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+        "variables": {}
+      },
+      "cost": null,
+      "stop_reason": null,
+      "ended_at": "2026-09-13T14:37:08.717Z"
+    }
+  ],
+  "authorizations": [],
+  "experiments": [],
+  "incidents": [],
+  "discovery": null,
+  "checkpoint": {
+    "at": "2026-09-13T14:46:55.965Z",
+    "revision": {
+      "commit": null,
+      "dirty": null,
+      "source_hash": "de323d97a2b42832c61a8cfa7cc8b6d1da80b6425f1338804043c3bcf59261d9"
+    },
+    "active_task": "TASK-e2e-verification",
+    "next_action": "Run the task pre-flight."
+  },
+  "legacy": null
+}

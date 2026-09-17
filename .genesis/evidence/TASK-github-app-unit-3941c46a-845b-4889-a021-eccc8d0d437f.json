@@ -1,0 +1,30 @@
+{
+  "task": "TASK-github-app",
+  "gate": "unit",
+  "kind": "command",
+  "attempt": "3941c46a-845b-4889-a021-eccc8d0d437f",
+  "command": "python -m pytest tests/test_github_app.py -q",
+  "started_at": "2026-09-13T07:19:45.832Z",
+  "observed_at": "2026-09-13T07:19:47.140Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": ".......                                                                  [100%]\n7 passed in 0.73s\n",
+  "stderr": "",
+  "failure": null,
+  "receipt": null,
+  "revision": {
+    "commit": null,
+    "dirty": null
+  },
+  "source_hash": "c1220687acf66b198a033a2cf1ac3caff315f439cff1ca69827b86f131f5f660",
+  "before_hash": "c1220687acf66b198a033a2cf1ac3caff315f439cff1ca69827b86f131f5f660",
+  "config_hash": "87622369cc6a567ca58c8ce6e5d59254e24794c06d62e1abafa2d350622a103c",
+  "environment": {
+    "node": "v22.22.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+    "variables": {}
+  },
+  "hash": "c74d7bff98ec0849f73f1616d58cf4140ce4ce059cf01bbe83fc4dd2989911d5"
+}

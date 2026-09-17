@@ -1,0 +1,30 @@
+{
+  "task": "TASK-agents",
+  "gate": "unit",
+  "kind": "command",
+  "attempt": "702027db-853f-429f-ba79-c242203b230d",
+  "command": "python -m pytest tests/test_agents.py -q",
+  "started_at": "2026-09-13T07:29:22.423Z",
+  "observed_at": "2026-09-13T07:29:23.083Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": ".........                                                                [100%]\n9 passed in 0.07s\n",
+  "stderr": "",
+  "failure": null,
+  "receipt": null,
+  "revision": {
+    "commit": null,
+    "dirty": null
+  },
+  "source_hash": "ae0ae84bee7ee2e6d594dea11c86cda20fe60f78c74566597331c0ee905b2d43",
+  "before_hash": "ae0ae84bee7ee2e6d594dea11c86cda20fe60f78c74566597331c0ee905b2d43",
+  "config_hash": "2e262234cb558b15199b806c2c2db50acc55aa11b7c6de7e442a53ab7b33e4ac",
+  "environment": {
+    "node": "v22.22.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+    "variables": {}
+  },
+  "hash": "f03d04c2350980b7b4a19c229fa679fcb50e91b028fe8c575d691c2782ec3ee3"
+}

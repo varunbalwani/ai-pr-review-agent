@@ -1,0 +1,13 @@
+{
+  "task": "TASK-orchestration",
+  "gate": "independent-review",
+  "kind": "review",
+  "attempt": "163d1735-f8a6-46ed-9559-e4cdde77055c",
+  "human": "Varun Balwani",
+  "reason": "...",
+  "observed_at": "2026-09-13T07:38:00.818Z",
+  "source_hash": "1985a528a48be9b8fadd264239596b8d1130b07bcc2ec8b7399d955a32647a7e",
+  "config_hash": "13bc64d977734c83d99f4f7ddda052315287ef558e1935529940e82ee697385b",
+  "reviewed_proofs": "4a3e8a5d5beeef3abdfdaf7d9693c00d9a6ab52ff15121282f2ab2b76a197b10",
+  "hash": "ce01722d4f6159b35c5cd0e4ef575370e5f9732ee57f0ed9d6e5f1da736ddfeb"
+}

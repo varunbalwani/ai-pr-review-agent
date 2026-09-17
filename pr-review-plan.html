@@ -1,0 +1,686 @@
+<title>PR Review Pipeline</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --surface-2: #eeece6;
+    --border: #dcd9d0;
+    --ink: #1c1a16;
+    --ink-dim: #605c52;
+    --ink-faint: #918c7f;
+    --accent: #3452e1;
+    --accent-ink: #ffffff;
+    --add: #1a7f37;
+    --add-bg: #e9f6ec;
+    --del: #cf222e;
+    --del-bg: #fdedee;
+    --warn: #9a6700;
+    --warn-bg: #fff3d6;
+    --code-bg: #f1efe8;
+    --shadow: rgba(28, 26, 22, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14151a;
+      --surface: #1b1c22;
+      --surface-2: #22232b;
+      --border: #33343d;
+      --ink: #e8e7e2;
+      --ink-dim: #a9a89f;
+      --ink-faint: #75746a;
+      --accent: #7d93ff;
+      --accent-ink: #0f1020;
+      --add: #4bc26a;
+      --add-bg: #16261c;
+      --del: #f2777b;
+      --del-bg: #2b1a1c;
+      --warn: #e0ac3d;
+      --warn-bg: #2b2313;
+      --code-bg: #1f2027;
+      --shadow: rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14151a;
+    --surface: #1b1c22;
+    --surface-2: #22232b;
+    --border: #33343d;
+    --ink: #e8e7e2;
+    --ink-dim: #a9a89f;
+    --ink-faint: #75746a;
+    --accent: #7d93ff;
+    --accent-ink: #0f1020;
+    --add: #4bc26a;
+    --add-bg: #16261c;
+    --del: #f2777b;
+    --del-bg: #2b1a1c;
+    --warn: #e0ac3d;
+    --warn-bg: #2b2313;
+    --code-bg: #1f2027;
+    --shadow: rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Source Sans 3", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding: 0 20px;
+  }
+  h1, h2, h3 {
+    font-family: "Archivo", system-ui, sans-serif;
+    text-wrap: balance;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  code, pre, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 48px;
+    padding-block: 40px 80px;
+  }
+  @media (max-width: 880px) {
+    .page { grid-template-columns: 1fr; gap: 0; }
+    nav.toc { display: none; }
+  }
+
+  header.masthead {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 28px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  h1.title { font-size: clamp(28px, 4vw, 40px); margin: 0; font-weight: 800; }
+  .subtitle { color: var(--ink-dim); font-size: 16px; max-width: 62ch; }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    margin-top: 6px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+  .meta-row span { display: flex; align-items: center; gap: 6px; }
+  .meta-row b { color: var(--ink-dim); font-weight: 500; }
+
+  nav.toc {
+    position: sticky;
+    top: 32px;
+    align-self: start;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+  }
+  nav.toc .toc-label {
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-faint); margin-bottom: 10px; font-size: 11px;
+  }
+  nav.toc a {
+    display: block;
+    color: var(--ink-dim);
+    text-decoration: none;
+    padding: 5px 0;
+    border-left: 2px solid transparent;
+    padding-left: 10px;
+    margin-left: -1px;
+  }
+  nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); border-left-color: var(--accent); }
+
+  main { min-width: 0; }
+  section { margin-bottom: 52px; scroll-margin-top: 24px; }
+  section h2 {
+    font-size: 22px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  section h2 .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  section h3 { font-size: 16px; margin: 22px 0 10px; color: var(--ink); }
+  p { max-width: 72ch; color: var(--ink); }
+  p.lead { color: var(--ink-dim); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px var(--shadow);
+  }
+
+  /* Architecture diagram */
+  .diagram-wrap {
+    overflow-x: auto;
+    padding: 20px;
+  }
+  .diagram-wrap svg { display: block; min-width: 640px; }
+  figcaption {
+    font-size: 13px; color: var(--ink-faint); padding: 0 20px 18px;
+    font-family: "IBM Plex Mono", monospace;
+  }
+
+  /* Components table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 560px; }
+  th {
+    text-align: left; font-family: "IBM Plex Mono", monospace; font-weight: 500;
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-faint); padding: 12px 18px; border-bottom: 1px solid var(--border);
+  }
+  td { padding: 12px 18px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td code.k { font-size: 13px; color: var(--accent); white-space: nowrap; }
+
+  /* code block */
+  pre.code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    overflow-x: auto;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  pre.code .kw { color: var(--accent); }
+  pre.code .tp { color: var(--add); }
+  pre.code .cm { color: var(--ink-faint); font-style: italic; }
+  pre.code .st { color: var(--warn); }
+
+  /* decisions list */
+  .decisions { display: flex; flex-direction: column; gap: 0; }
+  .decision {
+    display: grid;
+    grid-template-columns: 34px minmax(0,1fr);
+    gap: 16px;
+    padding: 18px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .decision:last-child { border-bottom: none; }
+  .decision .idx {
+    font-family: "IBM Plex Mono", monospace;
+    color: var(--ink-faint);
+    font-size: 13px;
+    padding-top: 2px;
+  }
+  .decision h3 { margin: 0 0 4px; font-size: 15.5px; }
+  .decision p { margin: 0; font-size: 14.5px; color: var(--ink-dim); max-width: 68ch; }
+  .decision .tag {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin-left: 8px;
+    vertical-align: middle;
+    transform: translateY(-1px);
+  }
+  .tag.gate { background: var(--warn-bg); color: var(--warn); }
+  .tag.core { background: var(--add-bg); color: var(--add); }
+  .tag.scope { background: var(--del-bg); color: var(--del); }
+
+  /* stack badges */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .stack-item {
+    padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .stack-item .role {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-faint);
+  }
+  .stack-item .choice { font-weight: 600; font-size: 15px; }
+  .stack-item .why { font-size: 13.5px; color: var(--ink-dim); }
+
+  /* phasing */
+  .phases { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 640px) { .phases { grid-template-columns: 1fr; } }
+  .phase {
+    padding: 22px;
+    position: relative;
+  }
+  .phase .ph-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+  }
+  .phase.p1 .ph-label { background: var(--add-bg); color: var(--add); }
+  .phase.p2 .ph-label { background: var(--surface-2); color: var(--ink-dim); }
+  .phase ul { margin: 0; padding-left: 20px; color: var(--ink-dim); font-size: 14.5px; }
+  .phase li { margin-bottom: 6px; }
+  .phase .done-marker {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--add);
+    margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border);
+  }
+
+  /* verification checklist */
+  .checklist { display: flex; flex-direction: column; gap: 0; }
+  .check {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 14px 4px; border-bottom: 1px solid var(--border);
+  }
+  .check:last-child { border-bottom: none; }
+  .check .box {
+    flex: none; width: 18px; height: 18px; margin-top: 2px;
+    border: 1.5px solid var(--ink-faint); border-radius: 4px;
+  }
+  .check p { margin: 0; font-size: 14.5px; }
+  .check .why { color: var(--ink-faint); font-size: 13px; }
+
+  a.footer-note { color: var(--ink-faint); }
+  footer {
+    grid-column: 1 / -1;
+    margin-top: 12px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--ink-faint);
+    font-size: 13px;
+    font-family: "IBM Plex Mono", monospace;
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <div class="eyebrow"><span class="dot"></span>architecture plan · v1 scope</div>
+    <h1 class="title">PR Review Pipeline</h1>
+    <p class="subtitle">A GitHub-triggered, multi-agent review system: four specialist lenses run in parallel on every PR, verified findings post inline, low-confidence ones wait for a human — with every decision logged for audit.</p>
+    <div class="meta-row">
+      <span><b>host:</b> GitHub only</span>
+      <span><b>tenancy:</b> single account</span>
+      <span><b>trigger:</b> self-hosted webhook</span>
+      <span><b>phases:</b> 2</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <div class="toc-label">Contents</div>
+    <a href="#architecture">Architecture</a>
+    <a href="#components">Components</a>
+    <a href="#contracts">Contracts</a>
+    <a href="#decisions">Key decisions</a>
+    <a href="#stack">Stack</a>
+    <a href="#phasing">Phasing</a>
+    <a href="#verification">Verification</a>
+  </nav>
+
+  <main>
+
+    <section id="architecture">
+      <h2><span class="num">01</span> Architecture</h2>
+      <p class="lead">One PR event becomes one checkpointed graph run: fan out to four agents, verify each finding, then either post it, queue it for a human, or drop it silently.</p>
+
+      <div class="card">
+        <div class="diagram-wrap">
+          <svg viewBox="0 0 1080 720" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-faint)"></path>
+              </marker>
+            </defs>
+            <style>
+              .node rect { fill: var(--surface); stroke: var(--border); stroke-width: 1.3; }
+              .node.accent rect { stroke: var(--accent); }
+              .node.warn rect { stroke: var(--warn); }
+              .node text { fill: var(--ink); font-size: 13px; }
+              .node .sub { fill: var(--ink-faint); font-size: 10.5px; }
+              .lane rect { fill: var(--surface-2); stroke: var(--border); stroke-dasharray: 3 4; }
+              .lane text { fill: var(--ink-faint); font-size: 10.5px; letter-spacing: 0.04em; }
+              .edge { stroke: var(--ink-faint); stroke-width: 1.3; fill: none; marker-end: url(#arrow); }
+              .label { fill: var(--ink-faint); font-size: 10.5px; }
+            </style>
+
+            <!-- webhook -->
+            <g class="node">
+              <rect x="440" y="10" width="200" height="46" rx="8"></rect>
+              <text x="540" y="30" text-anchor="middle">GitHub webhook</text>
+              <text class="sub" x="540" y="45" text-anchor="middle">POST /webhooks/github</text>
+            </g>
+            <path class="edge" d="M540,56 L540,86"></path>
+            <text class="label" x="556" y="76">HMAC verify · filter event</text>
+
+            <!-- queue -->
+            <g class="node accent">
+              <rect x="410" y="88" width="260" height="46" rx="8"></rect>
+              <text x="540" y="108" text-anchor="middle">ARQ job enqueued</text>
+              <text class="sub" x="540" y="123" text-anchor="middle">thread_id = repo · pr · head_sha</text>
+            </g>
+            <path class="edge" d="M540,134 L540,164"></path>
+
+            <!-- fetch -->
+            <g class="node">
+              <rect x="390" y="166" width="300" height="42" rx="8"></rect>
+              <text x="540" y="192" text-anchor="middle">fetch diff + PR metadata (GitHub App)</text>
+            </g>
+            <path class="edge" d="M540,208 L540,236"></path>
+
+            <!-- fan out lane -->
+            <g class="lane">
+              <rect x="140" y="238" width="800" height="112" rx="10"></rect>
+              <text x="158" y="256">FAN-OUT · asyncio.gather</text>
+            </g>
+            <g class="node">
+              <rect x="160" y="270" width="170" height="60" rx="8"></rect>
+              <text x="245" y="296" text-anchor="middle">Security</text>
+              <text class="sub" x="245" y="312" text-anchor="middle">diff + RAG</text>
+            </g>
+            <g class="node">
+              <rect x="350" y="270" width="170" height="60" rx="8"></rect>
+              <text x="435" y="296" text-anchor="middle">Quality</text>
+              <text class="sub" x="435" y="312" text-anchor="middle">diff + RAG</text>
+            </g>
+            <g class="node">
+              <rect x="540" y="270" width="170" height="60" rx="8"></rect>
+              <text x="625" y="296" text-anchor="middle">Test coverage</text>
+              <text class="sub" x="625" y="312" text-anchor="middle">diff + RAG</text>
+            </g>
+            <g class="node">
+              <rect x="730" y="270" width="190" height="60" rx="8"></rect>
+              <text x="825" y="296" text-anchor="middle">Docs</text>
+              <text class="sub" x="825" y="312" text-anchor="middle">gated · public surface only</text>
+            </g>
+            <path class="edge" d="M245,330 L245,352 L540,352"></path>
+            <path class="edge" d="M435,330 L435,352 L540,352"></path>
+            <path class="edge" d="M625,330 L625,352"></path>
+            <path class="edge" d="M825,330 L825,352 L540,352"></path>
+
+            <!-- verify -->
+            <g class="node">
+              <rect x="410" y="354" width="260" height="46" rx="8"></rect>
+              <text x="540" y="374" text-anchor="middle">Verify</text>
+              <text class="sub" x="540" y="389" text-anchor="middle">is this finding real? → confidence</text>
+            </g>
+            <path class="edge" d="M540,400 L540,428"></path>
+
+            <!-- route -->
+            <g class="node">
+              <rect x="440" y="430" width="200" height="42" rx="8"></rect>
+              <text x="540" y="456" text-anchor="middle">Route by confidence</text>
+            </g>
+
+            <!-- three branches -->
+            <path class="edge" d="M540,472 L245,472 L245,500"></path>
+            <text class="label" x="255" y="490">&lt; floor</text>
+            <g class="node">
+              <rect x="150" y="502" width="190" height="46" rx="8"></rect>
+              <text x="245" y="522" text-anchor="middle">Discard</text>
+              <text class="sub" x="245" y="537" text-anchor="middle">logged, not surfaced</text>
+            </g>
+
+            <path class="edge" d="M540,472 L540,500"></path>
+            <text class="label" x="548" y="490">≥ threshold</text>
+            <g class="node">
+              <rect x="445" y="502" width="190" height="46" rx="8"></rect>
+              <text x="540" y="522" text-anchor="middle">Auto-post</text>
+              <text class="sub" x="540" y="537" text-anchor="middle">high confidence</text>
+            </g>
+
+            <path class="edge" d="M540,472 L830,472 L830,500"></path>
+            <text class="label" x="838" y="490">in between</text>
+            <g class="node warn">
+              <rect x="735" y="502" width="200" height="46" rx="8"></rect>
+              <text x="835" y="522" text-anchor="middle">HITL interrupt()</text>
+              <text class="sub" x="835" y="537" text-anchor="middle">checkpoint · job returns</text>
+            </g>
+
+            <path class="edge" d="M835,548 L835,576"></path>
+            <g class="node">
+              <rect x="720" y="578" width="230" height="56" rx="8"></rect>
+              <text x="835" y="600" text-anchor="middle">Human approves</text>
+              <text class="sub" x="835" y="615" text-anchor="middle">new ARQ job resumes thread</text>
+              <text class="sub" x="835" y="627" text-anchor="middle" fill="var(--warn)">re-anchor to current diff</text>
+            </g>
+            <path class="edge" d="M835,634 L835,656 L620,656"></path>
+
+            <path class="edge" d="M540,548 L540,656"></path>
+
+            <!-- post -->
+            <g class="node accent">
+              <rect x="380" y="658" width="320" height="52" rx="8"></rect>
+              <text x="540" y="680" text-anchor="middle">Post node</text>
+              <text class="sub" x="540" y="696" text-anchor="middle">idempotent · one batched review · comments[]</text>
+            </g>
+
+          </svg>
+        </div>
+        <figcaption>fig. 1 — one PR event, end to end. amber = human-in-the-loop branch.</figcaption>
+      </div>
+    </section>
+
+    <section id="components">
+      <h2><span class="num">02</span> Components</h2>
+      <div class="card table-wrap">
+        <table>
+          <thead><tr><th>Component</th><th>Responsibility</th></tr></thead>
+          <tbody>
+            <tr><td><code class="k">webhook/</code></td><td>HMAC verification on the raw request body, event filtering, enqueues the ARQ job</td></tr>
+            <tr><td><code class="k">github_app/</code></td><td>GitHub App auth, installation-token minting + hourly cache, implements <code class="k">VCSProvider</code></td></tr>
+            <tr><td><code class="k">orchestration/</code></td><td>LangGraph definition — fan-out → verify → route → HITL interrupt → post</td></tr>
+            <tr><td><code class="k">agents/</code></td><td>Four lens agents (security, quality, test_coverage, docs); each maps <code class="k">diff → list[Finding]</code></td></tr>
+            <tr><td><code class="k">rag/</code></td><td>pgvectorscale index — backfill on install, incremental update on push, query interface</td></tr>
+            <tr><td><code class="k">storage/</code></td><td>Findings table (idempotency), audit hypertable, outcome table</td></tr>
+            <tr><td><code class="k">hitl/</code></td><td>Approval endpoint — auth, authorization, ownership check; re-anchoring on resume</td></tr>
+            <tr><td><code class="k">dashboard/</code></td><td>Auth'd internal app reading continuous aggregates — cost, latency, outcomes</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="contracts">
+      <h2><span class="num">03</span> Core contracts</h2>
+      <p class="lead">Every lens returns the same shape; every VCS host implements the same port. This is what makes a Bitbucket adapter a later addition, not a rewrite.</p>
+      <pre class="code"><span class="kw">class</span> <span class="tp">Finding</span>(BaseModel):
+    path: str
+    line: int
+    side: Literal[<span class="st">"LEFT"</span>, <span class="st">"RIGHT"</span>]
+    category: Literal[<span class="st">"security"</span>, <span class="st">"quality"</span>, <span class="st">"test_coverage"</span>, <span class="st">"docs"</span>]
+    severity: Literal[<span class="st">"low"</span>, <span class="st">"medium"</span>, <span class="st">"high"</span>]
+    confidence: float
+    rationale: str
+    suggested_patch: str | <span class="kw">None</span> = <span class="kw">None</span>
+    fingerprint: str  <span class="cm"># hash(path, normalized_snippet, category) — not line number</span>
+
+<span class="kw">class</span> <span class="tp">VCSProvider</span>(Protocol):
+    <span class="kw">async def</span> fetch_diff(self, repo, pr_number) -> Diff: ...
+    <span class="kw">async def</span> fetch_file(self, repo, path, ref) -> str: ...
+    <span class="kw">async def</span> post_review(self, repo, pr_number, findings: list[Finding], summary: str) -> <span class="kw">None</span>: ...
+    <span class="kw">async def</span> resolve_comment(self, repo, pr_number, comment_id) -> <span class="kw">None</span>: ...</pre>
+    </section>
+
+    <section id="decisions">
+      <h2><span class="num">04</span> Key decisions</h2>
+      <div class="card decisions">
+
+        <div class="decision">
+          <div class="idx">01</div>
+          <div>
+            <h3>One confidence gate, not two <span class="tag core">core</span></h3>
+            <p>Verify assigns a confidence score once. Routing — auto-post, HITL, or discard — is a pure function of that number. No second, independent "is this good enough" check downstream to fight it.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <div class="idx">02</div>
+          <div>
+            <h3>HITL re-anchoring rule <span class="tag gate">blocking</span></h3>
+            <p>A push between queueing and approval can invalidate a finding's line. On approval: re-anchor by <code class="mono">fingerprint</code> against the current diff — post normally if the line still exists, else fall back to a file-level note in the summary. Never post against a stale <code class="mono">head_sha</code>.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <div class="idx">03</div>
+          <div>
+            <h3><code class="mono">interrupt()</code> must not block a worker <span class="tag gate">blocking</span></h3>
+            <p>The ARQ job returns the moment the graph hits <code class="mono">interrupt()</code> — the checkpoint persists, not the job. Approval enqueues a fresh job that resumes the same thread, so worker concurrency stays bounded regardless of how long a human takes.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <div class="idx">04</div>
+          <div>
+            <h3>Idempotent post node <span class="tag core">core</span></h3>
+            <p>ARQ retries and LangGraph checkpoint replay are two separate durability layers. The post node re-checks the findings table by <code class="mono">(repo, pr_number, head_sha, fingerprint)</code> immediately before writing — a retried job must not double-post a review.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <div class="idx">05</div>
+          <div>
+            <h3>Docs agent is gated</h3>
+            <p>Fires only when the diff touches public API surface, config schema, CLI flags, or files referenced by README/docs. An unconditioned "update your docs" comment on every PR is how bots get muted.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <div class="idx">06</div>
+          <div>
+            <h3>Hypertable stores metrics, not payloads</h3>
+            <p><code class="mono">model, input_tokens, output_tokens, latency_ms, agent, repo, pr_number, ts, decision</code> — no raw diffs or completions by default. A capture flag exists for that, off by default, with its own retention policy if ever enabled.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <div class="idx">07</div>
+          <div>
+            <h3>Outcome tracking is data capture only <span class="tag scope">v1 scope</span></h3>
+            <p>v1 records PR outcome (merged/closed) and comment resolution (resolved/dismissed). Using that data to adjust agent behavior — confidence recalibration, prompt tuning — is deferred to v2.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <div class="idx">08</div>
+          <div>
+            <h3>Dashboard is a privileged component</h3>
+            <p>It exposes cost/telemetry and, via the HITL endpoint, lets someone decide what gets posted to an org's PRs. Requires auth, authorization, and an ownership check — an approver must be scoped to the specific repo/installation they're approving for.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <div class="idx">09</div>
+          <div>
+            <h3>RAG only, no call-graph table <span class="tag scope">v1 scope</span></h3>
+            <p>The impact/blast-radius agent was dropped from v1. Quality covers correctness informally using diff + pgvectorscale-retrieved related code, not exact caller graphs.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <div class="idx">10</div>
+          <div>
+            <h3>Models referenced by config key</h3>
+            <p><code class="mono">AGENT_MODEL_SECURITY</code>, <code class="mono">_QUALITY</code>, <code class="mono">_TEST_COVERAGE</code>, <code class="mono">_DOCS</code>, <code class="mono">_VERIFY</code> — default <code class="mono">claude-sonnet-5</code> for the four lenses, <code class="mono">claude-haiku-4-5</code> for verify. Configurable per org, never hardcoded.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="stack">
+      <h2><span class="num">05</span> Stack</h2>
+      <div class="stack-grid">
+        <div class="card stack-item">
+          <div class="role">API</div>
+          <div class="choice">FastAPI</div>
+          <div class="why">Webhook, HITL approval endpoint, dashboard backend</div>
+        </div>
+        <div class="card stack-item">
+          <div class="role">Queue</div>
+          <div class="choice">Redis + ARQ</div>
+          <div class="why">Async-native, pairs with FastAPI's async style</div>
+        </div>
+        <div class="card stack-item">
+          <div class="role">Orchestration</div>
+          <div class="choice">LangGraph</div>
+          <div class="why">Checkpointed graph, specifically for HITL pause/resume</div>
+        </div>
+        <div class="card stack-item">
+          <div class="role">Storage</div>
+          <div class="choice">Postgres · Tiger Cloud</div>
+          <div class="why">pgvectorscale for RAG, a hypertable for audit/cost/latency</div>
+        </div>
+        <div class="card stack-item">
+          <div class="role">LLM</div>
+          <div class="choice">Anthropic Messages API</div>
+          <div class="why">Models addressed by config key, not hardcoded</div>
+        </div>
+        <div class="card stack-item">
+          <div class="role">VCS</div>
+          <div class="choice">GitHub App</div>
+          <div class="why">Installation-scoped, org-installable — not a PAT</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="phasing">
+      <h2><span class="num">06</span> Phasing</h2>
+      <div class="phases">
+        <div class="card phase p1">
+          <span class="ph-label">Phase 1 — ships first</span>
+          <ul>
+            <li>Webhook, HMAC verify, GitHub App auth</li>
+            <li>ARQ queue + LangGraph graph, full HITL interrupt/resume</li>
+            <li>All four lens agents on diff + on-demand Contents API fetch (no RAG yet)</li>
+            <li>Audit hypertable + outcome capture live from day one</li>
+          </ul>
+          <div class="done-marker">✓ done when: a correct inline comment lands on a real PR, and a HITL-approved finding re-anchors correctly after a push</div>
+        </div>
+        <div class="card phase p2">
+          <span class="ph-label">Phase 2</span>
+          <ul>
+            <li>pgvectorscale index — backfill on install, incremental update on push</li>
+            <li>Lens agents upgraded to use RAG context</li>
+            <li>Custom dashboard app on top of the continuous aggregates</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="verification">
+      <h2><span class="num">07</span> Verification</h2>
+      <p class="lead">The bar is behavioral, not "tests pass" — comment anchoring is the highest-risk part of this build.</p>
+      <div class="card checklist">
+        <div class="check"><div class="box"></div><div><p>Unit tests: HMAC verification, fingerprint stability across line shifts, idempotent post node under retry</p></div></div>
+        <div class="check"><div class="box"></div><div><p>Real test PR with a planted bug, security issue, and untested change — every finding lands as an inline comment on the correct line, in one batched review</p></div></div>
+        <div class="check"><div class="box"></div><div><p>Push a second commit after a finding is HITL-queued; approve it; confirm re-anchoring posts correctly or falls back to the summary body</p><p class="why">exercises decision 02 directly</p></div></div>
+        <div class="check"><div class="box"></div><div><p>Audit hypertable has one row per LLM call with model/tokens/latency populated — no raw diff or completion text present</p></div></div>
+        <div class="check"><div class="box"></div><div><p>Docs agent does not fire on a PR touching only internal implementation, no public-surface change</p></div></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>PR Review Pipeline — architecture plan · single-tenant v1, GitHub only, self-hosted webhook</footer>
+</div>

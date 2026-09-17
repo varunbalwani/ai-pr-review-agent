@@ -1,0 +1,30 @@
+{
+  "task": "TASK-hitl",
+  "gate": "unit",
+  "kind": "command",
+  "attempt": "84a4d6f3-6d53-4be4-8e53-500b106bdf32",
+  "command": "python -m pytest tests/test_hitl.py -q",
+  "started_at": "2026-09-13T14:37:07.534Z",
+  "observed_at": "2026-09-13T14:37:08.717Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "................                                                         [100%]\n=============================== warnings summary ===============================\n.venv/lib/python3.12/site-packages/starlette/testclient.py:53\n  /Users/varun.balwani/projects/personal/genesis/.venv/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.\n    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n16 passed, 1 warning in 0.24s\n",
+  "stderr": "",
+  "failure": null,
+  "receipt": null,
+  "revision": {
+    "commit": null,
+    "dirty": null
+  },
+  "source_hash": "de323d97a2b42832c61a8cfa7cc8b6d1da80b6425f1338804043c3bcf59261d9",
+  "before_hash": "de323d97a2b42832c61a8cfa7cc8b6d1da80b6425f1338804043c3bcf59261d9",
+  "config_hash": "221925ad4f28667a45c3b27d9277202ac834379f5f530689c9102a3ce534c9b0",
+  "environment": {
+    "node": "v22.22.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "verifier": "358371454f03eb4fdfd3eda3cb1d18cb1dd8fe9445404bb3d3047267b3977eb9",
+    "variables": {}
+  },
+  "hash": "43153a7e358040ee8ab5d59d6f7f0a71f8978b11d36cdc0b48b09227333fcd3e"
+}

@@ -1,0 +1,13 @@
+{
+  "task": "TASK-hitl",
+  "gate": "independent-review",
+  "kind": "review",
+  "attempt": "e1346a15-3f07-4d02-906c-f788f277974c",
+  "human": "Varun Balwani",
+  "reason": "reviewed pr_review/hitl.py auth/ownership/re-anchor path + tests/test_hitl.py + DECISION-648a4bb5/b3356b1f",
+  "observed_at": "2026-09-13T14:46:44.030Z",
+  "source_hash": "de323d97a2b42832c61a8cfa7cc8b6d1da80b6425f1338804043c3bcf59261d9",
+  "config_hash": "221925ad4f28667a45c3b27d9277202ac834379f5f530689c9102a3ce534c9b0",
+  "reviewed_proofs": "bdb9ba443a9c9d819c31ca69a1d904412a100f19434da81d7f15e38c007191e2",
+  "hash": "bf435e6f6720dd0d7aa8876a5b2d6d9c4355a2c330ca807598b2549aefb006a3"
+}
